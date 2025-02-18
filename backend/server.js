@@ -16,15 +16,16 @@ const EXCHANGES = {
   bitfinex: "https://api-pub.bitfinex.com/v2/tickers?symbols=ALL"
 };
 
-// Fetch Prices with Retry
-const fetchWithRetry = async (url, retries = 3) => {
+// Fetch prices with retry and delay
+const fetchWithRetry = async (url, retries = 3, delay = 2000) => {
   while (retries > 0) {
     try {
-      const response = await axios.get(url, { timeout: 5000 });
+      const response = await axios.get(url, { timeout: 10000 });
       return response.data;
     } catch (error) {
       console.error(`Error fetching from ${url}: ${error.message}`);
       retries--;
+      await new Promise((resolve) => setTimeout(resolve, delay));
       if (retries === 0) return null;
     }
   }
@@ -51,26 +52,26 @@ const fetchPrices = async () => {
             if (!prices[item.symbol]) prices[item.symbol] = {};
             prices[item.symbol][exchange] = item.price + "$";
           });
-        } else if (exchange === "mexc" && data.data) {
+        } else if (exchange === "mexc" && data?.data) {
           data.data.forEach((item) => {
             const symbol = item.symbol.toUpperCase();
             if (!prices[symbol]) prices[symbol] = {};
             prices[symbol][exchange] = item.last + "$";
           });
-        } else if (exchange === "kraken" && data.result) {
+        } else if (exchange === "kraken" && data?.result) {
           Object.keys(data.result).forEach((symbol) => {
             if (!prices[symbol]) prices[symbol] = {};
             prices[symbol][exchange] = data.result[symbol].c[0] + "$";
           });
-        } else if (exchange === "kucoin" && data.data?.ticker) {
+        } else if (exchange === "kucoin" && data?.data?.ticker) {
           data.data.ticker.forEach((item) => {
             if (!prices[item.symbol]) prices[item.symbol] = {};
             prices[item.symbol][exchange] = item.last + "$";
           });
-        } else if (exchange === "coinbase" && data.data?.amount) {
+        } else if (exchange === "coinbase" && data?.data?.amount) {
           if (!prices["BTC-USD"]) prices["BTC-USD"] = {};
           prices["BTC-USD"][exchange] = data.data.amount + "$";
-        } else if (exchange === "huobi" && data.data) {
+        } else if (exchange === "huobi" && data?.data) {
           data.data.forEach((item) => {
             const symbol = item.symbol.toUpperCase();
             if (!prices[symbol]) prices[symbol] = {};
@@ -90,21 +91,22 @@ const fetchPrices = async () => {
       .map((symbol) => {
         const exchanges = Object.keys(prices[symbol]);
 
-        // Only include coins that exist on **all** exchanges
-        if (exchanges.length < Object.keys(EXCHANGES).length) return null;
+        // Remove coins that exist on only one exchange
+        if (exchanges.length < 2) return null;
 
-        let maxPrice = -Infinity,
-          minPrice = Infinity,
-          maxExchange = "",
-          minExchange = "";
+        let maxPrice = prices[symbol][exchanges[0]],
+          minPrice = prices[symbol][exchanges[0]],
+          maxExchange = exchanges[0],
+          minExchange = exchanges[0];
 
         exchanges.forEach((exchange) => {
-          const price = parseFloat(prices[symbol][exchange].replace("$", ""));
-          if (price > maxPrice) {
+          const price = prices[symbol][exchange];
+          const curprice = Number(price.replace("$", ""));
+          if (curprice > Number(maxPrice.replace("$", ""))) {
             maxPrice = price;
             maxExchange = exchange;
           }
-          if (price < minPrice) {
+          if (curprice < Number(minPrice.replace("$", ""))) {
             minPrice = price;
             minExchange = exchange;
           }
@@ -113,14 +115,15 @@ const fetchPrices = async () => {
         return {
           coin: symbol,
           ...prices[symbol],
-          difference: (maxPrice - minPrice).toFixed(2) + "$",
+          maxPrice,
           maxExchange,
+          minPrice,
           minExchange,
-          icon: `https://cryptoicons.org/api/icon/${symbol.toLowerCase()}/50`
+          difference: `${Number(maxPrice.replace("$", "")) - Number(minPrice.replace("$", ""))}$`
         };
       })
-      .filter((item) => item !== null) // Remove nulls
-      .sort((a, b) => parseFloat(b.difference.replace("$", "")) - parseFloat(a.difference.replace("$", ""))); // Sort by difference
+      .filter((item) => item !== null)
+      .sort((a, b) => Number(b.difference.replace("$", "")) - Number(a.difference.replace("$", "")));
   } catch (error) {
     console.error("Error fetching prices:", error);
     return [];

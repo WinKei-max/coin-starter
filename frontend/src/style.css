@@ -76,28 +76,54 @@ td img {
   height: 30px;
 }
 
-/* Pagination */
-.pagination {
+.pagination-container {
+  position: absolute;
+  top: 10px;
+  right: 20px;
   display: flex;
-  justify-content: center;
-  margin-top: 20px;
+  align-items: center;
+  gap: 10px;
 }
 
-.pagination button {
+.pagination-container button {
   background-color: #00c9ff;
-  color: #121212;
-  padding: 10px 15px;
+  color: white;
+  padding: 8px 15px;
+  font-size: 14px;
+  font-weight: bold;
   border: none;
   cursor: pointer;
   border-radius: 5px;
-  margin: 5px;
-  font-weight: bold;
 }
 
-.pagination button:disabled {
-  background-color: #444;
-  color: #999;
+.pagination-container button:disabled {
+  background-color: #999;
   cursor: not-allowed;
+}
+
+.pagination-container span {
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+}
+
+.radio-container {
+  margin: 15px 0;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.radio-container label {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.radio-container input {
+  margin-right: 8px;
+  cursor: pointer;
 }
 
 /* No Data Message */
