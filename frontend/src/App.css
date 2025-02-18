@@ -1,0 +1,137 @@
+/* General Styling */
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #f4f7fc;
+  margin: 0;
+  padding: 0;
+}
+
+.title {
+  text-align: center;
+  margin: 30px 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.search-input {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin: 20px auto;
+  max-width: 400px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: #007BFF;
+}
+
+.coin-table-container {
+  margin: 0 auto;
+  overflow-x: auto;
+  max-width: 90%;
+}
+
+.coin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+}
+
+.coin-table th, .coin-table td {
+  text-align: center;
+  padding: 12px;
+  font-size: 1rem;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.coin-table th {
+  background-color: #f8f8f8;
+  color: #555;
+  font-weight: 600;
+}
+
+.coin-table tr:hover {
+  background-color: #f1f1f1;
+  cursor: pointer;
+}
+
+.coin-table .positive {
+  color: green;
+}
+
+.coin-table .negative {
+  color: red;
+}
+
+.coin-table .selected-coin {
+  background-color: #e3f2fd;
+  border-left: 5px solid #007bff;
+}
+
+.coin-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+/* Pagination Styling */
+.pagination-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pagination {
+  display: inline-flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.page-item {
+  margin: 0 5px;
+}
+
+.page-link {
+  padding: 10px 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #fff;
+  color: #333;
+  text-decoration: none;
+}
+
+.page-link:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.active .page-link {
+  background-color: #007bff;
+  color: white;
+}
+
+.previous-item, .next-item {
+  font-weight: bold;
+}
+
+/* Coin Chart */
+.coin-chart-container {
+  margin-top: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.coin-chart {
+  width: 70%;
+  height: 400px;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
