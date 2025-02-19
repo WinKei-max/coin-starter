@@ -1,138 +1,62 @@
-const express = require("express");
-const axios = require("axios");
-const cors = require("cors");
+import express from 'express';
+import axios from 'axios';
+import cors from 'cors';
 
 const app = express();
+const port = 5000;
+
+// Enable CORS
 app.use(cors());
-const PORT = 5000;
 
-const EXCHANGES = {
-  binance: "https://api.binance.com/api/v3/ticker/price",
-  mexc: "https://www.mexc.com/open/api/v2/market/ticker",
-  kraken: "https://api.kraken.com/0/public/Ticker?pair=",
-  kucoin: "https://api.kucoin.com/api/v1/market/allTickers",
-  coinbase: "https://api.coinbase.com/v2/prices/spot?currency=USD",
-  huobi: "https://api.huobi.pro/market/tickers",
-  bitfinex: "https://api-pub.bitfinex.com/v2/tickers?symbols=ALL"
+// CEX API URLs
+const cexApis = {
+  binance: 'https://api.binance.com/api/v3/ticker/price',
+  mexc: 'https://www.mexc.com/open/api/v2/market/ticker',
+  kucoin: 'https://api.kucoin.com/api/v1/market/allTickers',
+  coinbase: 'https://api.coinbase.com/v2/prices',
+  bitfinex: 'https://api.bitfinex.com/v1/pubticker/',
 };
 
-// Fetch prices with retry and delay
-const fetchWithRetry = async (url, retries = 3, delay = 2000) => {
-  while (retries > 0) {
-    try {
-      const response = await axios.get(url, { timeout: 10000 });
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching from ${url}: ${error.message}`);
-      retries--;
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      if (retries === 0) return null;
-    }
+// Route to fetch coin data for a specific CEX
+app.get('/api/coin-data/:cex', async (req, res) => {
+  const { cex } = req.params;
+
+  if (!cexApis[cex]) {
+    return res.status(400).json({ error: 'CEX not supported' });
   }
-};
 
-const fetchPrices = async () => {
   try {
-    const responses = await Promise.allSettled(
-      Object.entries(EXCHANGES).map(async ([exchange, url]) => {
-        const data = await fetchWithRetry(url);
-        return { exchange, data };
-      })
-    );
+    const response = await axios.get(cexApis[cex]);
+    let data = [];
 
-    let prices = {};
+    if (cex === 'binance') {
+      data = response.data.map(coin => ({
+        symbol: coin.symbol,
+        price: coin.price,
+      }));
+    } else if (cex === 'mexc') {
+      data = response.data.data.map(coin => ({
+        symbol: coin.symbol,
+        price: coin.bid,
+      }));
+    } else if (cex === 'kucoin') {
+      data = response.data.data.ticker.map(coin => ({
+        symbol: coin.symbol,
+        price: coin.last,
+      }));
+    } else if (cex === 'coinbase') {
+      data = [{ symbol: 'USD', price: response.data.data.amount }];
+    } else if (cex === 'bitfinex') {
+      data = [{ symbol: 'USD', price: response.data.ask }];
+    }
 
-    responses.forEach((result) => {
-      if (result.status === "fulfilled" && result.value.data) {
-        const { exchange, data } = result.value;
-        if (!data) return;
-
-        if (exchange === "binance" && Array.isArray(data)) {
-          data.forEach((item) => {
-            if (!prices[item.symbol]) prices[item.symbol] = {};
-            prices[item.symbol][exchange] = item.price + "$";
-          });
-        } else if (exchange === "mexc" && data?.data) {
-          data.data.forEach((item) => {
-            const symbol = item.symbol.toUpperCase();
-            if (!prices[symbol]) prices[symbol] = {};
-            prices[symbol][exchange] = item.last + "$";
-          });
-        } else if (exchange === "kraken" && data?.result) {
-          Object.keys(data.result).forEach((symbol) => {
-            if (!prices[symbol]) prices[symbol] = {};
-            prices[symbol][exchange] = data.result[symbol].c[0] + "$";
-          });
-        } else if (exchange === "kucoin" && data?.data?.ticker) {
-          data.data.ticker.forEach((item) => {
-            if (!prices[item.symbol]) prices[item.symbol] = {};
-            prices[item.symbol][exchange] = item.last + "$";
-          });
-        } else if (exchange === "coinbase" && data?.data?.amount) {
-          if (!prices["BTC-USD"]) prices["BTC-USD"] = {};
-          prices["BTC-USD"][exchange] = data.data.amount + "$";
-        } else if (exchange === "huobi" && data?.data) {
-          data.data.forEach((item) => {
-            const symbol = item.symbol.toUpperCase();
-            if (!prices[symbol]) prices[symbol] = {};
-            prices[symbol][exchange] = item.close + "$";
-          });
-        } else if (exchange === "bitfinex" && Array.isArray(data)) {
-          data.forEach((item) => {
-            const symbol = item[0].substring(1);
-            if (!prices[symbol]) prices[symbol] = {};
-            prices[symbol][exchange] = item[7] + "$";
-          });
-        }
-      }
-    });
-
-    return Object.keys(prices)
-      .map((symbol) => {
-        const exchanges = Object.keys(prices[symbol]);
-
-        // Remove coins that exist on only one exchange
-        if (exchanges.length < 2) return null;
-
-        let maxPrice = prices[symbol][exchanges[0]],
-          minPrice = prices[symbol][exchanges[0]],
-          maxExchange = exchanges[0],
-          minExchange = exchanges[0];
-
-        exchanges.forEach((exchange) => {
-          const price = prices[symbol][exchange];
-          const curprice = Number(price.replace("$", ""));
-          if (curprice > Number(maxPrice.replace("$", ""))) {
-            maxPrice = price;
-            maxExchange = exchange;
-          }
-          if (curprice < Number(minPrice.replace("$", ""))) {
-            minPrice = price;
-            minExchange = exchange;
-          }
-        });
-
-        return {
-          coin: symbol,
-          ...prices[symbol],
-          maxPrice,
-          maxExchange,
-          minPrice,
-          minExchange,
-          difference: `${Number(maxPrice.replace("$", "")) - Number(minPrice.replace("$", ""))}$`
-        };
-      })
-      .filter((item) => item !== null)
-      .sort((a, b) => Number(b.difference.replace("$", "")) - Number(a.difference.replace("$", "")));
+    res.json(data);
   } catch (error) {
-    console.error("Error fetching prices:", error);
-    return [];
+    console.error('Error fetching data: ', error);
+    res.status(500).json({ error: 'Error fetching data from the CEX API' });
   }
-};
-
-app.get("/prices", async (req, res) => {
-  const priceData = await fetchPrices();
-  res.json(priceData);
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
